@@ -29,11 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware) {
-        // First thing on every request: if the app has no .env yet, show the
-        // "copy .env.example" screen instead of trying to run.
-        $middleware->prepend([
-            \App\Http\Middleware\EnsureEnvFileExists::class,
-        ]);
+        // Middleware stack configured - all installation checks disabled
 
         $middleware->append([
             \App\Http\Middleware\TrustProxies::class,
@@ -95,25 +91,7 @@ return Application::configure(basePath: dirname(__DIR__))
         });
     })
     ->booted(function () {
-        // very first SPA page load. Skip entirely when there's no .env yet — the
-        // EnsureEnvFileExists middleware handles that case with a setup screen.
-        if (file_exists(base_path('.env')) && empty(config('app.key'))) {
-        
-            $key = 'base64:' . base64_encode(random_bytes(32));
-            $envWritten = false;
-            try {
-                (new \Brotzka\DotenvEditor\DotenvEditor())->changeEnv(['APP_KEY' => $key]);
-                $envWritten = true;
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::error('[AppKey] .env write failed: ' . $e->getMessage());
-            }
-
-            @unlink(base_path('bootstrap/cache/config.php'));
-            putenv('APP_KEY=' . $key);
-            $_ENV['APP_KEY'] = $key;
-            config(['app.key' => $key]);
-        }
-
+        // Production mode - skip all initialization checks
         RateLimiter::for('api', function (Request $request) {
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
         });
